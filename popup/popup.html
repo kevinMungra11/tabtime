@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TabTime</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>⏱️ TabTime</h1>
+        <p class="subtitle">Track your browsing time</p>
+      </header>
+
+      <main>
+        <div class="current-site">
+          <h2>Current Site</h2>
+          <div id="currentSiteInfo" class="site-info">
+            <p class="loading">Loading...</p>
+          </div>
+        </div>
+
+        <div class="quick-stats">
+          <h2>Today's Stats</h2>
+          <div id="todayStats" class="stats-grid">
+            <div class="stat-card">
+              <span class="stat-value">0h 0m</span>
+              <span class="stat-label">Total Time</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value">0</span>
+              <span class="stat-label">Sites Visited</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="viewAnalytics" class="btn btn-primary">
+            View Analytics
+          </button>
+          <button id="setLimit" class="btn btn-secondary">
+            Set Time Limit
+          </button>
+        </div>
+      </main>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "TabTime",
+  "version": "1.0.0",
+  "description": "Track your time spent on websites",
+  "permissions": ["tabs", "storage"],
+  "action": {
+    "default_popup": "popup.html"
+  }
+}

@@ -1,0 +1,19 @@
+body {
+  width: 300px;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+.container {
+  text-align: center;
+}
+
+h1 {
+  color: #333;
+  margin-bottom: 10px;
+}
+
+p {
+  color: #666;
+}
+
