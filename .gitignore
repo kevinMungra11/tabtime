@@ -5,6 +5,11 @@ node_modules/
 dist/
 build/
 
+# Lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
 # IDE
 .vscode/
 .idea/
