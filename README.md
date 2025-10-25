@@ -54,5 +54,3 @@ tabtime/
 ```
 
 ---
-
-**Note:** This project is being built incrementally as a learning project.
