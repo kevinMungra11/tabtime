@@ -3,19 +3,44 @@
 let currentTab = null;
 let currentDomain = null;
 let startTime = null;
-let sessionData = {}; // Store time data in memory for now
+let sessionData = {}; // Store time data in memory
 
 // Initialize on install
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async () => {
   console.log('TabTime installed!');
+  await loadDataFromStorage();
   startTracking();
 });
 
 // Initialize on startup
-chrome.runtime.onStartup.addListener(() => {
+chrome.runtime.onStartup.addListener(async () => {
   console.log('TabTime started!');
+  await loadDataFromStorage();
   startTracking();
 });
+
+// Load data from chrome.storage
+async function loadDataFromStorage() {
+  try {
+    const result = await chrome.storage.local.get(['sessionData']);
+    if (result.sessionData) {
+      sessionData = result.sessionData;
+      console.log('Loaded data from storage:', sessionData);
+    }
+  } catch (error) {
+    console.error('Error loading data:', error);
+  }
+}
+
+// Save data to chrome.storage
+async function saveDataToStorage() {
+  try {
+    await chrome.storage.local.set({ sessionData });
+    console.log('Saved data to storage');
+  } catch (error) {
+    console.error('Error saving data:', error);
+  }
+}
 
 // Start tracking the current active tab
 async function startTracking() {
@@ -39,10 +64,10 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 });
 
 // Listen for window focus changes
-chrome.windows.onFocusChanged.addListener((windowId) => {
+chrome.windows.onFocusChanged.addListener(async (windowId) => {
   if (windowId === chrome.windows.WINDOW_ID_NONE) {
     // Browser lost focus - stop tracking
-    saveCurrentSession();
+    await saveCurrentSession();
     currentDomain = null;
     startTime = null;
   } else {
@@ -51,10 +76,39 @@ chrome.windows.onFocusChanged.addListener((windowId) => {
   }
 });
 
+// Periodic save every 30 seconds (backup)
+setInterval(async () => {
+  if (currentDomain && startTime) {
+    // Save current session without resetting startTime
+    const now = Date.now();
+    const timeSpent = Math.floor((now - startTime) / 1000);
+    
+    if (timeSpent > 0) {
+      const tempDomain = currentDomain;
+      const tempTime = startTime;
+      
+      if (!sessionData[tempDomain]) {
+        sessionData[tempDomain] = 0;
+      }
+      
+      // Calculate total including current session
+      const totalTime = sessionData[tempDomain] + timeSpent;
+      
+      // Create a copy of sessionData with current session included
+      const dataToSave = { ...sessionData };
+      dataToSave[tempDomain] = totalTime;
+      
+      // Save to storage
+      await chrome.storage.local.set({ sessionData: dataToSave });
+      console.log('Periodic save - preserving current session');
+    }
+  }
+}, 30000); // Every 30 seconds
+
 // Handle tab change
-function handleTabChange(tab) {
+async function handleTabChange(tab) {
   // Save time for previous tab
-  saveCurrentSession();
+  await saveCurrentSession();
   
   // Start tracking new tab
   currentTab = tab;
@@ -65,7 +119,7 @@ function handleTabChange(tab) {
 }
 
 // Save current session time
-function saveCurrentSession() {
+async function saveCurrentSession() {
   if (!currentDomain || !startTime) return;
   
   const now = Date.now();
@@ -78,6 +132,9 @@ function saveCurrentSession() {
     sessionData[currentDomain] += timeSpent;
     
     console.log(`Saved ${timeSpent}s for ${currentDomain}. Total: ${sessionData[currentDomain]}s`);
+    
+    // Persist to storage
+    await saveDataToStorage();
   }
   
   // Reset start time to now for continuous tracking

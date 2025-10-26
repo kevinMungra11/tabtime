@@ -10,10 +10,9 @@
 - ✅ Real-time time tracking per website
 - ✅ Background service worker for continuous tracking
 - ✅ Automatic tab switching detection
+- ✅ Persistent storage (data survives browser restarts)
 
 ## 🎯 Upcoming Features
-
-- 💾 Persistent storage (save data across sessions)
 - 📊 Today's total statistics
 - 📋 Top sites list
 - 📅 7-day history view
