@@ -4,11 +4,28 @@ import './popup.css';
 
 function App() {
   const [currentDomain, setCurrentDomain] = useState('');
+  const [timeSpent, setTimeSpent] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     getCurrentTabDomain();
   }, []);
+
+  useEffect(() => {
+    if (!currentDomain || currentDomain === 'Chrome Page' || currentDomain === 'Unknown' || currentDomain === 'Error') {
+      return;
+    }
+
+    // Initial fetch
+    getTimeForDomain(currentDomain);
+    
+    // Update time every second
+    const interval = setInterval(() => {
+      getTimeForDomain(currentDomain);
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [currentDomain]);
 
   const getCurrentTabDomain = async () => {
     try {
@@ -17,6 +34,11 @@ function App() {
       if (tab && tab.url) {
         const domain = extractDomain(tab.url);
         setCurrentDomain(domain);
+        
+        // Get time for this domain
+        if (domain !== 'Chrome Page' && domain !== 'Unknown') {
+          await getTimeForDomain(domain);
+        }
       } else {
         setCurrentDomain('Unknown');
       }
@@ -25,6 +47,21 @@ function App() {
       setCurrentDomain('Error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getTimeForDomain = async (domain) => {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'GET_TIME',
+        domain: domain
+      });
+      
+      if (response && response.time !== undefined) {
+        setTimeSpent(response.time);
+      }
+    } catch (error) {
+      console.error('Error getting time:', error);
     }
   };
 
@@ -47,6 +84,20 @@ function App() {
     }
   };
 
+  const formatTime = (seconds) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${secs}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${secs}s`;
+    } else {
+      return `${secs}s`;
+    }
+  };
+
   return (
     <div className="container">
       <h1>TabTime</h1>
@@ -56,9 +107,18 @@ function App() {
         {loading ? (
           <p className="loading">Loading...</p>
         ) : (
-          <div className="domain-display">
-            <p className="domain">{currentDomain}</p>
-          </div>
+          <>
+            <div className="domain-display">
+              <p className="domain">{currentDomain}</p>
+            </div>
+            
+            {currentDomain !== 'Chrome Page' && currentDomain !== 'Unknown' && currentDomain !== 'Error' && (
+              <div className="time-display">
+                <p className="time-label">Time spent</p>
+                <p className="time-value">{formatTime(timeSpent)}</p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

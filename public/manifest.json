@@ -4,6 +4,9 @@
   "version": "1.0.0",
   "description": "Track your time spent on websites",
   "permissions": ["tabs", "storage"],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "popup.html"
   }

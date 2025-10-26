@@ -12,6 +12,9 @@ export default defineConfig({
         // Copy manifest
         copyFileSync('public/manifest.json', 'dist/manifest.json');
         
+        // Copy background script directly (no bundling needed)
+        copyFileSync('src/background/background.js', 'dist/background.js');
+        
         // Move popup.html to root of dist
         if (existsSync('dist/src/popup/popup.html')) {
           renameSync('dist/src/popup/popup.html', 'dist/popup.html');

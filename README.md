@@ -4,14 +4,23 @@
 
 **Status:** 🔨 Currently in active development
 
-## 🎯 Planned Features
+## ✅ Implemented Features
 
-- ⏱️ Real-time website time tracking
-- 📊 Detailed analytics and insights
+- ✅ Display current tab domain
+- ✅ Real-time time tracking per website
+- ✅ Background service worker for continuous tracking
+- ✅ Automatic tab switching detection
+
+## 🎯 Upcoming Features
+
+- 💾 Persistent storage (save data across sessions)
+- 📊 Today's total statistics
+- 📋 Top sites list
+- 📅 7-day history view
 - ⏰ Set time limits for specific websites
 - 🔔 Smart notifications
 - 🔒 Website blocking capabilities
-- 📈 Visual data analytics
+- 📈 Visual data analytics dashboard
 
 ## 🛠️ Tech Stack
 
