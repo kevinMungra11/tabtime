@@ -13,9 +13,9 @@
 - ✅ Persistent storage (data survives browser restarts)
 - ✅ Today's total statistics (total time + sites count)
 - ✅ Date-based data organization
+- ✅ Top sites list (ranked top 10 with visual badges)
 
 ## 🎯 Upcoming Features
-- 📋 Top sites list
 - 📅 7-day history view
 - ⏰ Set time limits for specific websites
 - 🔔 Smart notifications
