@@ -3,7 +3,13 @@
 let currentTab = null;
 let currentDomain = null;
 let startTime = null;
-let sessionData = {}; // Store time data in memory
+let sessionData = {}; // Store time data organized by date
+
+// Helper to get today's date key (YYYY-MM-DD)
+function getTodayKey() {
+  const today = new Date();
+  return today.toISOString().split('T')[0];
+}
 
 // Initialize on install
 chrome.runtime.onInstalled.addListener(async () => {
@@ -84,19 +90,25 @@ setInterval(async () => {
     const timeSpent = Math.floor((now - startTime) / 1000);
     
     if (timeSpent > 0) {
+      const today = getTodayKey();
       const tempDomain = currentDomain;
-      const tempTime = startTime;
       
-      if (!sessionData[tempDomain]) {
-        sessionData[tempDomain] = 0;
+      // Create a copy of sessionData
+      const dataToSave = JSON.parse(JSON.stringify(sessionData));
+      
+      // Initialize today's data if not exists
+      if (!dataToSave[today]) {
+        dataToSave[today] = {};
+      }
+      
+      // Initialize domain data if not exists
+      if (!dataToSave[today][tempDomain]) {
+        dataToSave[today][tempDomain] = 0;
       }
       
       // Calculate total including current session
-      const totalTime = sessionData[tempDomain] + timeSpent;
-      
-      // Create a copy of sessionData with current session included
-      const dataToSave = { ...sessionData };
-      dataToSave[tempDomain] = totalTime;
+      const totalTime = dataToSave[today][tempDomain] + timeSpent;
+      dataToSave[today][tempDomain] = totalTime;
       
       // Save to storage
       await chrome.storage.local.set({ sessionData: dataToSave });
@@ -126,12 +138,21 @@ async function saveCurrentSession() {
   const timeSpent = Math.floor((now - startTime) / 1000); // seconds
   
   if (timeSpent > 0) {
-    if (!sessionData[currentDomain]) {
-      sessionData[currentDomain] = 0;
-    }
-    sessionData[currentDomain] += timeSpent;
+    const today = getTodayKey();
     
-    console.log(`Saved ${timeSpent}s for ${currentDomain}. Total: ${sessionData[currentDomain]}s`);
+    // Initialize today's data if not exists
+    if (!sessionData[today]) {
+      sessionData[today] = {};
+    }
+    
+    // Initialize domain data if not exists
+    if (!sessionData[today][currentDomain]) {
+      sessionData[today][currentDomain] = 0;
+    }
+    
+    sessionData[today][currentDomain] += timeSpent;
+    
+    console.log(`Saved ${timeSpent}s for ${currentDomain}. Total: ${sessionData[today][currentDomain]}s`);
     
     // Persist to storage
     await saveDataToStorage();
@@ -160,7 +181,8 @@ function extractDomain(url) {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'GET_TIME') {
     const domain = request.domain;
-    let timeSpent = sessionData[domain] || 0;
+    const today = getTodayKey();
+    let timeSpent = (sessionData[today] && sessionData[today][domain]) || 0;
     
     // If this domain is currently being tracked, add current session time
     if (domain === currentDomain && startTime) {
@@ -172,6 +194,37 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse({ 
       time: timeSpent,
       isActive: domain === currentDomain 
+    });
+  }
+  
+  if (request.action === 'GET_TODAY_STATS') {
+    const today = getTodayKey();
+    const todayData = sessionData[today] || {};
+    
+    let totalTime = 0;
+    let sitesCount = 0;
+    
+    // Calculate total from saved data
+    for (const domain in todayData) {
+      totalTime += todayData[domain];
+      sitesCount++;
+    }
+    
+    // Add current session if tracking
+    if (currentDomain && startTime) {
+      const now = Date.now();
+      const currentSessionTime = Math.floor((now - startTime) / 1000);
+      
+      if (!todayData[currentDomain]) {
+        sitesCount++;
+      }
+      totalTime += currentSessionTime;
+    }
+    
+    sendResponse({
+      totalTime,
+      sitesCount,
+      sites: todayData
     });
   }
   

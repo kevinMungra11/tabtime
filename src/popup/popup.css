@@ -12,7 +12,7 @@ body {
 
 .container {
   background: #f8f9fa;
-  min-height: 200px;
+  min-height: 400px;
 }
 
 h1 {
@@ -22,6 +22,38 @@ h1 {
   text-align: center;
   font-size: 24px;
   font-weight: 700;
+}
+
+.today-stats {
+  padding: 20px 20px 0 20px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #667eea;
+  margin-bottom: 6px;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .current-site {

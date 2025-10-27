@@ -5,23 +5,21 @@ import './popup.css';
 function App() {
   const [currentDomain, setCurrentDomain] = useState('');
   const [timeSpent, setTimeSpent] = useState(0);
+  const [todayStats, setTodayStats] = useState({ totalTime: 0, sitesCount: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     getCurrentTabDomain();
+    getTodayStats();
   }, []);
 
   useEffect(() => {
-    if (!currentDomain || currentDomain === 'Chrome Page' || currentDomain === 'Unknown' || currentDomain === 'Error') {
-      return;
-    }
-
-    // Initial fetch
-    getTimeForDomain(currentDomain);
-    
-    // Update time every second
+    // Update stats every second
     const interval = setInterval(() => {
-      getTimeForDomain(currentDomain);
+      if (currentDomain && currentDomain !== 'Chrome Page' && currentDomain !== 'Unknown' && currentDomain !== 'Error') {
+        getTimeForDomain(currentDomain);
+      }
+      getTodayStats();
     }, 1000);
     
     return () => clearInterval(interval);
@@ -65,6 +63,23 @@ function App() {
     }
   };
 
+  const getTodayStats = async () => {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'GET_TODAY_STATS'
+      });
+      
+      if (response) {
+        setTodayStats({
+          totalTime: response.totalTime || 0,
+          sitesCount: response.sitesCount || 0
+        });
+      }
+    } catch (error) {
+      console.error('Error getting today stats:', error);
+    }
+  };
+
   const extractDomain = (url) => {
     try {
       // Handle special Chrome URLs
@@ -102,6 +117,20 @@ function App() {
     <div className="container">
       <h1>TabTime</h1>
       
+      <div className="today-stats">
+        <h2>Today's Activity</h2>
+        <div className="stats-grid">
+          <div className="stat-card">
+            <p className="stat-value">{formatTime(todayStats.totalTime)}</p>
+            <p className="stat-label">Total Time</p>
+          </div>
+          <div className="stat-card">
+            <p className="stat-value">{todayStats.sitesCount}</p>
+            <p className="stat-label">Sites Visited</p>
+          </div>
+        </div>
+      </div>
+      
       <div className="current-site">
         <h2>Current Site</h2>
         {loading ? (
@@ -114,7 +143,7 @@ function App() {
             
             {currentDomain !== 'Chrome Page' && currentDomain !== 'Unknown' && currentDomain !== 'Error' && (
               <div className="time-display">
-                <p className="time-label">Time spent</p>
+                <p className="time-label">Time spent today</p>
                 <p className="time-value">{formatTime(timeSpent)}</p>
               </div>
             )}

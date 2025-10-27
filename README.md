@@ -11,9 +11,10 @@
 - ✅ Background service worker for continuous tracking
 - ✅ Automatic tab switching detection
 - ✅ Persistent storage (data survives browser restarts)
+- ✅ Today's total statistics (total time + sites count)
+- ✅ Date-based data organization
 
 ## 🎯 Upcoming Features
-- 📊 Today's total statistics
 - 📋 Top sites list
 - 📅 7-day history view
 - ⏰ Set time limits for specific websites
