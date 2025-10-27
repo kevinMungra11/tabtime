@@ -5,7 +5,7 @@ import './popup.css';
 function App() {
   const [currentDomain, setCurrentDomain] = useState('');
   const [timeSpent, setTimeSpent] = useState(0);
-  const [todayStats, setTodayStats] = useState({ totalTime: 0, sitesCount: 0 });
+  const [todayStats, setTodayStats] = useState({ totalTime: 0, sitesCount: 0, sites: {} });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -72,12 +72,31 @@ function App() {
       if (response) {
         setTodayStats({
           totalTime: response.totalTime || 0,
-          sitesCount: response.sitesCount || 0
+          sitesCount: response.sitesCount || 0,
+          sites: response.sites || {}
         });
       }
     } catch (error) {
       console.error('Error getting today stats:', error);
     }
+  };
+
+  const getTopSites = () => {
+    const sites = todayStats.sites || {};
+    const siteArray = [];
+    
+    // Convert sites object to array
+    for (const domain in sites) {
+      siteArray.push({ 
+        domain, 
+        time: sites[domain] 
+      });
+    }
+    
+    // Sort by time (descending) and take top 10
+    return siteArray
+      .sort((a, b) => b.time - a.time)
+      .slice(0, 10);
   };
 
   const extractDomain = (url) => {
@@ -112,6 +131,8 @@ function App() {
       return `${secs}s`;
     }
   };
+
+  const topSites = getTopSites();
 
   return (
     <div className="container">
@@ -150,6 +171,23 @@ function App() {
           </>
         )}
       </div>
+
+      {topSites.length > 0 && (
+        <div className="top-sites">
+          <h2>Top Sites Today</h2>
+          <div className="sites-list">
+            {topSites.map((site, index) => (
+              <div key={site.domain} className="site-item">
+                <div className="site-rank">{index + 1}</div>
+                <div className="site-info">
+                  <p className="site-domain">{site.domain}</p>
+                  <p className="site-time">{formatTime(site.time)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

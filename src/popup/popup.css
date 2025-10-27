@@ -13,6 +13,8 @@ body {
 .container {
   background: #f8f9fa;
   min-height: 400px;
+  max-height: 600px;
+  overflow-y: auto;
 }
 
 h1 {
@@ -112,6 +114,70 @@ h2 {
   font-size: 28px;
   font-weight: 700;
   color: #667eea;
+  font-family: 'Courier New', monospace;
+}
+
+.top-sites {
+  padding: 0 20px 20px 20px;
+}
+
+.sites-list {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.site-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s;
+}
+
+.site-item:last-child {
+  border-bottom: none;
+}
+
+.site-item:hover {
+  background: #f8f9fa;
+}
+
+.site-rank {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.site-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.site-domain {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.site-time {
+  font-size: 12px;
+  color: #667eea;
+  font-weight: 600;
   font-family: 'Courier New', monospace;
 }
 
