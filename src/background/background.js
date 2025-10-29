@@ -4,6 +4,7 @@ let currentTab = null;
 let currentDomain = null;
 let startTime = null;
 let sessionData = {}; // Store time data organized by date
+let timeLimits = {}; // Store time limits for domains (in minutes)
 
 // Helper to get today's date key (YYYY-MM-DD)
 function getTodayKey() {
@@ -28,10 +29,14 @@ chrome.runtime.onStartup.addListener(async () => {
 // Load data from chrome.storage
 async function loadDataFromStorage() {
   try {
-    const result = await chrome.storage.local.get(['sessionData']);
+    const result = await chrome.storage.local.get(['sessionData', 'timeLimits']);
     if (result.sessionData) {
       sessionData = result.sessionData;
       console.log('Loaded data from storage:', sessionData);
+    }
+    if (result.timeLimits) {
+      timeLimits = result.timeLimits;
+      console.log('Loaded limits from storage:', timeLimits);
     }
   } catch (error) {
     console.error('Error loading data:', error);
@@ -41,7 +46,7 @@ async function loadDataFromStorage() {
 // Save data to chrome.storage
 async function saveDataToStorage() {
   try {
-    await chrome.storage.local.set({ sessionData });
+    await chrome.storage.local.set({ sessionData, timeLimits });
     console.log('Saved data to storage');
   } catch (error) {
     console.error('Error saving data:', error);
@@ -385,6 +390,24 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse(result);
     });
     return true; // Keep channel open for async response
+  }
+  
+  if (request.action === 'GET_LIMITS') {
+    sendResponse({ limits: timeLimits });
+  }
+  
+  if (request.action === 'SET_LIMIT') {
+    const { domain, limitMinutes } = request;
+    timeLimits[domain] = limitMinutes;
+    saveDataToStorage();
+    sendResponse({ success: true });
+  }
+  
+  if (request.action === 'DELETE_LIMIT') {
+    const { domain } = request;
+    delete timeLimits[domain];
+    saveDataToStorage();
+    sendResponse({ success: true });
   }
   
   return true; // Keep message channel open

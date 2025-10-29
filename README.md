@@ -16,11 +16,11 @@
 - ✅ Top sites list (ranked top 10 with visual badges)
 - ✅ 7-day history view (dedicated page with daily breakdowns)
 - ✅ Browser history import (automatically sync past 7 days)
+- ✅ Set time limits for websites (daily limits with progress tracking)
 
 ## 🎯 Upcoming Features
 
-- ⏰ Set time limits for specific websites
-- 🔔 Smart notifications
+- 🔔 Smart notifications (warnings & limit exceeded alerts)
 - 🔒 Website blocking capabilities
 - 📈 Visual data analytics dashboard
 

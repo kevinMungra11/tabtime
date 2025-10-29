@@ -7,11 +7,27 @@ function App() {
   const [timeSpent, setTimeSpent] = useState(0);
   const [todayStats, setTodayStats] = useState({ totalTime: 0, sitesCount: 0, sites: {} });
   const [loading, setLoading] = useState(true);
+  const [limits, setLimits] = useState({});
 
   useEffect(() => {
     getCurrentTabDomain();
     getTodayStats();
+    loadLimits();
   }, []);
+
+  const loadLimits = async () => {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'GET_LIMITS'
+      });
+      
+      if (response && response.limits) {
+        setLimits(response.limits);
+      }
+    } catch (error) {
+      console.error('Error loading limits:', error);
+    }
+  };
 
   useEffect(() => {
     // Update stats every second
@@ -133,6 +149,13 @@ function App() {
   };
 
   const topSites = getTopSites();
+  
+  // Check if current domain has a limit
+  const currentLimit = limits[currentDomain];
+  const limitSeconds = currentLimit ? currentLimit * 60 : null;
+  const limitProgress = limitSeconds ? (timeSpent / limitSeconds) * 100 : 0;
+  const isOverLimit = limitSeconds && timeSpent >= limitSeconds;
+  const isNearLimit = limitSeconds && timeSpent >= limitSeconds * 0.8;
 
   return (
     <div className="container">
@@ -163,10 +186,38 @@ function App() {
             </div>
             
             {currentDomain !== 'Chrome Page' && currentDomain !== 'Unknown' && currentDomain !== 'Error' && (
-              <div className="time-display">
-                <p className="time-label">Time spent today</p>
-                <p className="time-value">{formatTime(timeSpent)}</p>
-              </div>
+              <>
+                <div className="time-display">
+                  <p className="time-label">Time spent today</p>
+                  <p className="time-value">{formatTime(timeSpent)}</p>
+                  
+                  {limitSeconds && (
+                    <p className="limit-info">
+                      / {formatTime(limitSeconds)} limit
+                    </p>
+                  )}
+                </div>
+                
+                {limitSeconds && (
+                  <div className="progress-container">
+                    <div 
+                      className={`progress-bar ${isOverLimit ? 'over-limit' : isNearLimit ? 'near-limit' : ''}`}
+                      style={{ width: `${Math.min(limitProgress, 100)}%` }}
+                    />
+                  </div>
+                )}
+                
+                {isOverLimit && (
+                  <div className="limit-warning over">
+                    ⚠️ Time limit exceeded!
+                  </div>
+                )}
+                {isNearLimit && !isOverLimit && (
+                  <div className="limit-warning near">
+                    ⏰ Approaching time limit
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
@@ -191,10 +242,16 @@ function App() {
 
       <div className="actions">
         <button 
+          className="btn btn-secondary"
+          onClick={() => chrome.tabs.create({ url: 'limits.html' })}
+        >
+          ⏰ Manage Limits
+        </button>
+        <button 
           className="btn btn-primary"
           onClick={() => chrome.tabs.create({ url: 'history.html' })}
         >
-          View 7-Day History
+          📊 View History
         </button>
       </div>
     </div>

@@ -22,6 +22,9 @@ export default defineConfig({
         if (existsSync('dist/src/history/history.html')) {
           renameSync('dist/src/history/history.html', 'dist/history.html');
         }
+        if (existsSync('dist/src/limits/limits.html')) {
+          renameSync('dist/src/limits/limits.html', 'dist/limits.html');
+        }
         
         // Clean up src folder
         if (existsSync('dist/src')) {
@@ -37,6 +40,7 @@ export default defineConfig({
       input: {
         popup: resolve(__dirname, 'src/popup/popup.html'),
         history: resolve(__dirname, 'src/history/history.html'),
+        limits: resolve(__dirname, 'src/limits/limits.html'),
       },
       output: {
         entryFileNames: (chunkInfo) => {
@@ -46,6 +50,9 @@ export default defineConfig({
           }
           if (chunkInfo.name === 'history') {
             return 'history.js';
+          }
+          if (chunkInfo.name === 'limits') {
+            return 'limits.js';
           }
           return '[name].js';
         },
