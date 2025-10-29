@@ -14,6 +14,7 @@
 - ✅ Today's total statistics (total time + sites count)
 - ✅ Date-based data organization
 - ✅ Top sites list (ranked top 10 with visual badges)
+- ✅ 7-day history view (dedicated page with daily breakdowns)
 
 ## 🎯 Upcoming Features
 - 📅 7-day history view

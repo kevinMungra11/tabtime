@@ -228,6 +228,40 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
   }
   
+  if (request.action === 'GET_HISTORY') {
+    const history = [];
+    const today = new Date();
+    
+    // Get last 7 days
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateKey = date.toISOString().split('T')[0];
+      
+      const dayData = sessionData[dateKey] || {};
+      let totalTime = 0;
+      const sites = [];
+      
+      for (const domain in dayData) {
+        const time = dayData[domain];
+        totalTime += time;
+        sites.push({ domain, time });
+      }
+      
+      // Sort sites by time
+      sites.sort((a, b) => b.time - a.time);
+      
+      history.push({
+        date: dateKey,
+        totalTime,
+        sitesCount: sites.length,
+        sites: sites.slice(0, 5) // Top 5 sites per day
+      });
+    }
+    
+    sendResponse({ history });
+  }
+  
   return true; // Keep message channel open
 });
 

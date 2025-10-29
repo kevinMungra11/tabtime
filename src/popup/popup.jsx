@@ -188,6 +188,15 @@ function App() {
           </div>
         </div>
       )}
+
+      <div className="actions">
+        <button 
+          className="btn btn-primary"
+          onClick={() => chrome.tabs.create({ url: 'history.html' })}
+        >
+          View 7-Day History
+        </button>
+      </div>
     </div>
   );
 }
