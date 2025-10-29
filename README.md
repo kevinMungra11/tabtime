@@ -15,6 +15,7 @@
 - ✅ Date-based data organization
 - ✅ Top sites list (ranked top 10 with visual badges)
 - ✅ 7-day history view (dedicated page with daily breakdowns)
+- ✅ Browser history import (automatically sync past 7 days)
 
 ## 🎯 Upcoming Features
 

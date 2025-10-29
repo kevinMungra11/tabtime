@@ -175,6 +175,125 @@ function extractDomain(url) {
   }
 }
 
+// Sync browsing history
+async function syncBrowsingHistory(days = 7) {
+  console.log(`Starting history sync for last ${days} days...`);
+  
+  const now = Date.now();
+  const startTime = now - (days * 24 * 60 * 60 * 1000); // X days ago
+  
+  try {
+    // Get all history items from the last X days
+    const historyItems = await chrome.history.search({
+      text: '',
+      startTime: startTime,
+      endTime: now,
+      maxResults: 10000
+    });
+    
+    console.log(`Found ${historyItems.length} history items`);
+    
+    // Group visits by domain and date
+    const visitsByDomain = {};
+    
+    // Get detailed visits for each history item
+    for (const item of historyItems) {
+      if (!item.url) continue;
+      
+      const domain = extractDomain(item.url);
+      if (!domain) continue;
+      
+      // Get all visits for this URL
+      const visits = await chrome.history.getVisits({ url: item.url });
+      
+      for (const visit of visits) {
+        if (visit.visitTime < startTime) continue;
+        
+        const visitDate = new Date(visit.visitTime);
+        const dateKey = visitDate.toISOString().split('T')[0];
+        
+        if (!visitsByDomain[dateKey]) {
+          visitsByDomain[dateKey] = {};
+        }
+        
+        if (!visitsByDomain[dateKey][domain]) {
+          visitsByDomain[dateKey][domain] = [];
+        }
+        
+        visitsByDomain[dateKey][domain].push({
+          time: visit.visitTime,
+          transition: visit.transition
+        });
+      }
+    }
+    
+    console.log('Organized visits by domain and date');
+    
+    // Estimate time spent on each domain per day
+    let totalImported = 0;
+    
+    for (const dateKey in visitsByDomain) {
+      if (!sessionData[dateKey]) {
+        sessionData[dateKey] = {};
+      }
+      
+      for (const domain in visitsByDomain[dateKey]) {
+        const visits = visitsByDomain[dateKey][domain];
+        
+        // Sort visits by time
+        visits.sort((a, b) => a.time - b.time);
+        
+        let estimatedTime = 0;
+        
+        // Estimate time between consecutive visits
+        for (let i = 0; i < visits.length - 1; i++) {
+          const currentVisit = visits[i];
+          const nextVisit = visits[i + 1];
+          const gap = (nextVisit.time - currentVisit.time) / 1000; // seconds
+          
+          // Only count gaps less than 30 minutes (assume user was active)
+          if (gap < 1800) {
+            estimatedTime += gap;
+          } else {
+            // For gaps > 30 min, assume 5 minutes of activity
+            estimatedTime += 300;
+          }
+        }
+        
+        // Add 5 minutes for the last visit (assumption)
+        if (visits.length > 0) {
+          estimatedTime += 300;
+        }
+        
+        // Only import if we don't already have tracked data for this domain on this day
+        if (!sessionData[dateKey][domain]) {
+          sessionData[dateKey][domain] = Math.floor(estimatedTime);
+          totalImported += Math.floor(estimatedTime);
+        }
+      }
+    }
+    
+    // Save the imported data
+    await saveDataToStorage();
+    
+    console.log(`History sync complete! Imported ${totalImported} seconds of estimated data`);
+    
+    return {
+      success: true,
+      itemsProcessed: historyItems.length,
+      timeImported: totalImported,
+      daysImported: days
+    };
+    
+  } catch (error) {
+    console.error('Error syncing history:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
 // Handle messages from popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'GET_TIME') {
@@ -258,6 +377,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
     
     sendResponse({ history });
+  }
+  
+  if (request.action === 'SYNC_HISTORY') {
+    const days = request.days || 7;
+    syncBrowsingHistory(days).then(result => {
+      sendResponse(result);
+    });
+    return true; // Keep channel open for async response
   }
   
   return true; // Keep message channel open

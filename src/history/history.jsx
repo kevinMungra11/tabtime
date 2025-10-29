@@ -5,6 +5,8 @@ import './history.css';
 function History() {
   const [historyData, setHistoryData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
 
   useEffect(() => {
     loadHistoryData();
@@ -23,6 +25,36 @@ function History() {
       console.error('Error loading history:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSyncHistory = async () => {
+    setSyncing(true);
+    setSyncMessage('Analyzing your browsing history...');
+    
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'SYNC_HISTORY',
+        days: 7
+      });
+
+      if (response.success) {
+        const minutes = Math.floor(response.timeImported / 60);
+        setSyncMessage(`✅ Successfully imported ~${minutes} minutes from ${response.itemsProcessed} history items!`);
+        
+        // Reload history data
+        setTimeout(() => {
+          loadHistoryData();
+          setSyncMessage('');
+        }, 3000);
+      } else {
+        setSyncMessage(`❌ Error: ${response.error}`);
+      }
+    } catch (error) {
+      console.error('Error syncing history:', error);
+      setSyncMessage('❌ Failed to sync history');
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -65,6 +97,18 @@ function History() {
       <header className="history-header">
         <h1>📊 7-Day History</h1>
         <p className="subtitle">Your browsing activity over the past week</p>
+        
+        <button 
+          className="sync-button"
+          onClick={handleSyncHistory}
+          disabled={syncing}
+        >
+          {syncing ? '⏳ Syncing...' : '🔄 Import Browser History'}
+        </button>
+        
+        {syncMessage && (
+          <div className="sync-message">{syncMessage}</div>
+        )}
       </header>
 
       <main className="history-main">
