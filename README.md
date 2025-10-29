@@ -17,12 +17,18 @@
 - ✅ 7-day history view (dedicated page with daily breakdowns)
 - ✅ Browser history import (automatically sync past 7 days)
 - ✅ Set time limits for websites (daily limits with progress tracking)
+- ✅ Domain suggestions dropdown (auto-suggest from browsing history)
+- ✅ Persistent time limit storage (survives extension reloads)
 - ✅ Smart notifications (80% warning + limit reached alerts)
+- ✅ Website blocking (automatic redirect when limit exceeded)
 
-## 🎯 Upcoming Features
+## 🎯 Potential Future Enhancements
 
-- 🔒 Website blocking (redirect when limit exceeded)
-- 📈 Visual data analytics dashboard
+- 📈 Visual charts and graphs
+- 📊 Weekly/monthly analytics
+- 🎯 Custom block schedules (e.g., block during work hours)
+- 📤 Export data as CSV/JSON
+- ☁️ Cloud sync across devices
 
 ## 🛠️ Tech Stack
 

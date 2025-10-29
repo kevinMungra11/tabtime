@@ -13,6 +13,13 @@ function getTodayKey() {
   return today.toISOString().split('T')[0];
 }
 
+// Initialize immediately when service worker starts (handles reload in dev mode)
+(async function init() {
+  console.log('TabTime service worker initialized');
+  await loadDataFromStorage();
+  startTracking();
+})();
+
 // Initialize on install
 chrome.runtime.onInstalled.addListener(async () => {
   console.log('TabTime installed!');
@@ -82,6 +89,26 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.url && tab.active) {
     handleTabChange(tab);
+  }
+});
+
+// Listen for navigation and block if limit exceeded
+chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
+  if (details.frameId !== 0) return; // Only main frame
+  
+  const domain = extractDomain(details.url);
+  if (!domain || !timeLimits[domain]) return; // No limit set
+  
+  // Check if limit is exceeded
+  const today = getTodayKey();
+  const timeSpent = (sessionData[today] && sessionData[today][domain]) || 0;
+  const limitSeconds = timeLimits[domain] * 60;
+  
+  if (timeSpent >= limitSeconds) {
+    // Redirect to blocked page
+    chrome.tabs.update(details.tabId, {
+      url: `blocked.html?domain=${encodeURIComponent(domain)}`
+    });
   }
 });
 

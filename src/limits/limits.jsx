@@ -8,9 +8,12 @@ function Limits() {
   const [newLimit, setNewLimit] = useState('');
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [domainSuggestions, setDomainSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
     loadLimits();
+    loadDomainSuggestions();
   }, []);
 
   const loadLimits = async () => {
@@ -26,6 +29,26 @@ function Limits() {
       console.error('Error loading limits:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadDomainSuggestions = async () => {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'GET_TODAY_STATS'
+      });
+
+      if (response && response.sites) {
+        // Get all domains and sort by time spent
+        const domains = Object.entries(response.sites)
+          .map(([domain, time]) => ({ domain, time }))
+          .sort((a, b) => b.time - a.time)
+          .map(item => item.domain);
+        
+        setDomainSuggestions(domains);
+      }
+    } catch (error) {
+      console.error('Error loading domain suggestions:', error);
     }
   };
 
@@ -90,6 +113,22 @@ function Limits() {
     setTimeout(() => setMessage(''), 3000);
   };
 
+  const handleDomainInputChange = (e) => {
+    const value = e.target.value;
+    setNewDomain(value);
+    setShowSuggestions(value.length > 0);
+  };
+
+  const selectDomain = (domain) => {
+    setNewDomain(domain);
+    setShowSuggestions(false);
+  };
+
+  const filteredSuggestions = domainSuggestions.filter(domain =>
+    domain.toLowerCase().includes(newDomain.toLowerCase()) &&
+    !limits[domain] // Don't suggest domains that already have limits
+  );
+
   const formatTime = (minutes) => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
@@ -114,13 +153,30 @@ function Limits() {
           
           <div className="form-group">
             <label>Website Domain</label>
-            <input
-              type="text"
-              placeholder="e.g., youtube.com"
-              value={newDomain}
-              onChange={(e) => setNewDomain(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleAddLimit()}
-            />
+            <div className="input-with-suggestions">
+              <input
+                type="text"
+                placeholder="e.g., youtube.com"
+                value={newDomain}
+                onChange={handleDomainInputChange}
+                onKeyPress={(e) => e.key === 'Enter' && handleAddLimit()}
+                onFocus={() => setShowSuggestions(newDomain.length > 0)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+              />
+              {showSuggestions && filteredSuggestions.length > 0 && (
+                <div className="suggestions-dropdown">
+                  {filteredSuggestions.slice(0, 5).map((domain) => (
+                    <div
+                      key={domain}
+                      className="suggestion-item"
+                      onClick={() => selectDomain(domain)}
+                    >
+                      {domain}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="form-group">
