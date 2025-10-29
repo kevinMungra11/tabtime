@@ -85,34 +85,32 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
 // Periodic save every 30 seconds (backup)
 setInterval(async () => {
   if (currentDomain && startTime) {
-    // Save current session without resetting startTime
     const now = Date.now();
     const timeSpent = Math.floor((now - startTime) / 1000);
     
     if (timeSpent > 0) {
       const today = getTodayKey();
-      const tempDomain = currentDomain;
-      
-      // Create a copy of sessionData
-      const dataToSave = JSON.parse(JSON.stringify(sessionData));
       
       // Initialize today's data if not exists
-      if (!dataToSave[today]) {
-        dataToSave[today] = {};
+      if (!sessionData[today]) {
+        sessionData[today] = {};
       }
       
       // Initialize domain data if not exists
-      if (!dataToSave[today][tempDomain]) {
-        dataToSave[today][tempDomain] = 0;
+      if (!sessionData[today][currentDomain]) {
+        sessionData[today][currentDomain] = 0;
       }
       
-      // Calculate total including current session
-      const totalTime = dataToSave[today][tempDomain] + timeSpent;
-      dataToSave[today][tempDomain] = totalTime;
+      // Add the time spent since last save
+      sessionData[today][currentDomain] += timeSpent;
+      
+      console.log(`Periodic save: ${timeSpent}s for ${currentDomain}. Total: ${sessionData[today][currentDomain]}s`);
       
       // Save to storage
-      await chrome.storage.local.set({ sessionData: dataToSave });
-      console.log('Periodic save - preserving current session');
+      await saveDataToStorage();
+      
+      // Reset startTime to now for next interval
+      startTime = now;
     }
   }
 }, 30000); // Every 30 seconds
