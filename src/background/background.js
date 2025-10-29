@@ -5,6 +5,7 @@ let currentDomain = null;
 let startTime = null;
 let sessionData = {}; // Store time data organized by date
 let timeLimits = {}; // Store time limits for domains (in minutes)
+let notificationState = {}; // Track which notifications have been shown today
 
 // Helper to get today's date key (YYYY-MM-DD)
 function getTodayKey() {
@@ -29,7 +30,7 @@ chrome.runtime.onStartup.addListener(async () => {
 // Load data from chrome.storage
 async function loadDataFromStorage() {
   try {
-    const result = await chrome.storage.local.get(['sessionData', 'timeLimits']);
+    const result = await chrome.storage.local.get(['sessionData', 'timeLimits', 'notificationState']);
     if (result.sessionData) {
       sessionData = result.sessionData;
       console.log('Loaded data from storage:', sessionData);
@@ -37,6 +38,16 @@ async function loadDataFromStorage() {
     if (result.timeLimits) {
       timeLimits = result.timeLimits;
       console.log('Loaded limits from storage:', timeLimits);
+    }
+    if (result.notificationState) {
+      notificationState = result.notificationState;
+      // Clean up old notification states (not from today)
+      const today = getTodayKey();
+      if (notificationState.date !== today) {
+        notificationState = { date: today };
+      }
+    } else {
+      notificationState = { date: getTodayKey() };
     }
   } catch (error) {
     console.error('Error loading data:', error);
@@ -46,7 +57,7 @@ async function loadDataFromStorage() {
 // Save data to chrome.storage
 async function saveDataToStorage() {
   try {
-    await chrome.storage.local.set({ sessionData, timeLimits });
+    await chrome.storage.local.set({ sessionData, timeLimits, notificationState });
     console.log('Saved data to storage');
   } catch (error) {
     console.error('Error saving data:', error);
@@ -87,6 +98,64 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
   }
 });
 
+// Check time limits and send notifications
+async function checkTimeLimits(domain, totalTimeSeconds) {
+  if (!timeLimits[domain]) return; // No limit set for this domain
+  
+  const limitSeconds = timeLimits[domain] * 60;
+  const percentUsed = (totalTimeSeconds / limitSeconds) * 100;
+  
+  const today = getTodayKey();
+  
+  // Ensure notification state has today's date
+  if (notificationState.date !== today) {
+    notificationState = { date: today };
+  }
+  
+  // Initialize domain notification state
+  if (!notificationState[domain]) {
+    notificationState[domain] = {
+      warning80: false,
+      limitReached: false
+    };
+  }
+  
+  // 80% warning notification
+  if (percentUsed >= 80 && percentUsed < 100 && !notificationState[domain].warning80) {
+    const minutesUsed = Math.floor(totalTimeSeconds / 60);
+    const limitMinutes = timeLimits[domain];
+    
+    await chrome.notifications.create({
+      type: 'basic',
+      iconUrl: 'icon-128.png',
+      title: '⏰ Time Limit Warning',
+      message: `You've used ${minutesUsed} of ${limitMinutes} minutes on ${domain} today.`,
+      priority: 1
+    });
+    
+    notificationState[domain].warning80 = true;
+    await saveDataToStorage();
+    console.log(`Sent 80% warning for ${domain}`);
+  }
+  
+  // 100% limit reached notification
+  if (percentUsed >= 100 && !notificationState[domain].limitReached) {
+    const limitMinutes = timeLimits[domain];
+    
+    await chrome.notifications.create({
+      type: 'basic',
+      iconUrl: 'icon-128.png',
+      title: '⚠️ Time Limit Reached!',
+      message: `You've reached your ${limitMinutes} minute limit for ${domain} today.`,
+      priority: 2
+    });
+    
+    notificationState[domain].limitReached = true;
+    await saveDataToStorage();
+    console.log(`Sent limit reached notification for ${domain}`);
+  }
+}
+
 // Periodic save every 30 seconds (backup)
 setInterval(async () => {
   if (currentDomain && startTime) {
@@ -110,6 +179,9 @@ setInterval(async () => {
       sessionData[today][currentDomain] += timeSpent;
       
       console.log(`Periodic save: ${timeSpent}s for ${currentDomain}. Total: ${sessionData[today][currentDomain]}s`);
+      
+      // Check time limits and send notifications if needed
+      await checkTimeLimits(currentDomain, sessionData[today][currentDomain]);
       
       // Save to storage
       await saveDataToStorage();
@@ -156,6 +228,9 @@ async function saveCurrentSession() {
     sessionData[today][currentDomain] += timeSpent;
     
     console.log(`Saved ${timeSpent}s for ${currentDomain}. Total: ${sessionData[today][currentDomain]}s`);
+    
+    // Check time limits and send notifications if needed
+    await checkTimeLimits(currentDomain, sessionData[today][currentDomain]);
     
     // Persist to storage
     await saveDataToStorage();

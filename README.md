@@ -17,11 +17,11 @@
 - ✅ 7-day history view (dedicated page with daily breakdowns)
 - ✅ Browser history import (automatically sync past 7 days)
 - ✅ Set time limits for websites (daily limits with progress tracking)
+- ✅ Smart notifications (80% warning + limit reached alerts)
 
 ## 🎯 Upcoming Features
 
-- 🔔 Smart notifications (warnings & limit exceeded alerts)
-- 🔒 Website blocking capabilities
+- 🔒 Website blocking (redirect when limit exceeded)
 - 📈 Visual data analytics dashboard
 
 ## 🛠️ Tech Stack

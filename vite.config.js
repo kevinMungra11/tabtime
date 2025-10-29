@@ -12,6 +12,11 @@ export default defineConfig({
         // Copy manifest
         copyFileSync('public/manifest.json', 'dist/manifest.json');
         
+        // Copy icons
+        copyFileSync('public/icon-16.png', 'dist/icon-16.png');
+        copyFileSync('public/icon-48.png', 'dist/icon-48.png');
+        copyFileSync('public/icon-128.png', 'dist/icon-128.png');
+        
         // Copy background script directly (no bundling needed)
         copyFileSync('src/background/background.js', 'dist/background.js');
         

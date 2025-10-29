@@ -3,11 +3,21 @@
   "name": "TabTime",
   "version": "1.0.0",
   "description": "Track your time spent on websites",
-  "permissions": ["tabs", "storage", "history"],
+  "permissions": ["tabs", "storage", "history", "notifications"],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon-16.png",
+      "48": "icon-48.png",
+      "128": "icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
   }
 }
