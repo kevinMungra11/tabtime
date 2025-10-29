@@ -17,7 +17,7 @@
 - ✅ 7-day history view (dedicated page with daily breakdowns)
 
 ## 🎯 Upcoming Features
-- 📅 7-day history view
+
 - ⏰ Set time limits for specific websites
 - 🔔 Smart notifications
 - 🔒 Website blocking capabilities
