@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import './popup.css';
+import 'antd/dist/reset.css';
+import { Layout, Card, Statistic, Typography, Progress, Button, Space, List, Tag } from 'antd';
+import { FieldTimeOutlined, BarChartOutlined } from '@ant-design/icons';
 
 function App() {
   const [currentDomain, setCurrentDomain] = useState('');
@@ -158,103 +161,77 @@ function App() {
   const isNearLimit = limitSeconds && timeSpent >= limitSeconds * 0.8;
 
   return (
-    <div className="container">
-      <h1>TabTime</h1>
-      
-      <div className="today-stats">
-        <h2>Today's Activity</h2>
-        <div className="stats-grid">
-          <div className="stat-card">
-            <p className="stat-value">{formatTime(todayStats.totalTime)}</p>
-            <p className="stat-label">Total Time</p>
-          </div>
-          <div className="stat-card">
-            <p className="stat-value">{todayStats.sitesCount}</p>
-            <p className="stat-label">Sites Visited</p>
-          </div>
+    <Layout style={{ minWidth: 360, maxWidth: 380, background: '#fff' }}>
+      <Layout.Header style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', padding: '12px 16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography.Title level={3} style={{ color: '#fff', margin: 0 }}>TabTime</Typography.Title>
+          <Tag color="purple" style={{ border: 'none' }}>Phase 1</Tag>
         </div>
-      </div>
-      
-      <div className="current-site">
-        <h2>Current Site</h2>
-        {loading ? (
-          <p className="loading">Loading...</p>
-        ) : (
-          <>
-            <div className="domain-display">
-              <p className="domain">{currentDomain}</p>
-            </div>
-            
-            {currentDomain !== 'Chrome Page' && currentDomain !== 'Unknown' && currentDomain !== 'Error' && (
-              <>
-                <div className="time-display">
-                  <p className="time-label">Time spent today</p>
-                  <p className="time-value">{formatTime(timeSpent)}</p>
-                  
-                  {limitSeconds && (
-                    <p className="limit-info">
-                      / {formatTime(limitSeconds)} limit
-                    </p>
-                  )}
-                </div>
-                
-                {limitSeconds && (
-                  <div className="progress-container">
-                    <div 
-                      className={`progress-bar ${isOverLimit ? 'over-limit' : isNearLimit ? 'near-limit' : ''}`}
-                      style={{ width: `${Math.min(limitProgress, 100)}%` }}
-                    />
-                  </div>
+        <Typography.Text style={{ color: 'rgba(255,255,255,0.9)' }}>Track. Limit. Improve.</Typography.Text>
+      </Layout.Header>
+
+      <Layout.Content style={{ padding: 14 }}>
+        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <Typography.Text type="secondary">TODAY'S ACTIVITY</Typography.Text>
+          <Space.Compact style={{ width: '100%' }}>
+            <Card style={{ flex: 1 }}>
+              <Statistic title="Total Time" value={formatTime(todayStats.totalTime)} prefix={<FieldTimeOutlined />} />
+            </Card>
+            <Card style={{ flex: 1 }}>
+              <Statistic title="Sites Visited" value={todayStats.sitesCount} prefix={<BarChartOutlined />} />
+            </Card>
+          </Space.Compact>
+
+          <Typography.Text type="secondary">CURRENT SITE</Typography.Text>
+          <Card>
+            {loading ? (
+              <Typography.Text type="secondary">Loading...</Typography.Text>
+            ) : (
+              <Space direction="vertical" style={{ width: '100%' }} size={8}>
+                <Typography.Title level={5} style={{ margin: 0 }}>{currentDomain}</Typography.Title>
+                {currentDomain !== 'Chrome Page' && currentDomain !== 'Unknown' && currentDomain !== 'Error' && (
+                  <>
+                    <Typography.Text type="secondary">Time spent today</Typography.Text>
+                    <Typography.Title level={4} style={{ margin: 0 }}>{formatTime(timeSpent)} {limitSeconds ? <Typography.Text type="secondary">/ {formatTime(limitSeconds)} limit</Typography.Text> : null}</Typography.Title>
+                    {limitSeconds ? (
+                      <Progress percent={Math.min(Math.round(limitProgress), 100)} status={isOverLimit ? 'exception' : isNearLimit ? 'active' : 'normal'} showInfo={false} />
+                    ) : null}
+                    {isOverLimit && <Tag color="error">Time limit exceeded</Tag>}
+                    {isNearLimit && !isOverLimit && <Tag color="warning">Approaching time limit</Tag>}
+                  </>
                 )}
-                
-                {isOverLimit && (
-                  <div className="limit-warning over">
-                    ⚠️ Time limit exceeded!
-                  </div>
-                )}
-                {isNearLimit && !isOverLimit && (
-                  <div className="limit-warning near">
-                    ⏰ Approaching time limit
-                  </div>
-                )}
-              </>
+              </Space>
             )}
-          </>
-        )}
-      </div>
+          </Card>
 
-      {topSites.length > 0 && (
-        <div className="top-sites">
-          <h2>Top Sites Today</h2>
-          <div className="sites-list">
-            {topSites.map((site, index) => (
-              <div key={site.domain} className="site-item">
-                <div className="site-rank">{index + 1}</div>
-                <div className="site-info">
-                  <p className="site-domain">{site.domain}</p>
-                  <p className="site-time">{formatTime(site.time)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+          {topSites.length > 0 && (
+            <>
+              <Typography.Text type="secondary">TOP SITES TODAY</Typography.Text>
+              <Card bodyStyle={{ padding: 0 }}>
+                <List
+                  itemLayout="horizontal"
+                  dataSource={topSites}
+                  renderItem={(site, index) => (
+                    <List.Item style={{ padding: '10px 16px' }}>
+                      <List.Item.Meta
+                        avatar={<Tag color="purple">{index + 1}</Tag>}
+                        title={<Typography.Text strong ellipsis>{site.domain}</Typography.Text>}
+                        description={<Typography.Text type="secondary">{formatTime(site.time)}</Typography.Text>}
+                      />
+                    </List.Item>
+                  )}
+                />
+              </Card>
+            </>
+          )}
 
-      <div className="actions">
-        <button 
-          className="btn btn-secondary"
-          onClick={() => chrome.tabs.create({ url: 'limits.html' })}
-        >
-          ⏰ Manage Limits
-        </button>
-        <button 
-          className="btn btn-primary"
-          onClick={() => chrome.tabs.create({ url: 'history.html' })}
-        >
-          📊 View History
-        </button>
-      </div>
-    </div>
+          <Space.Compact style={{ width: '100%' }}>
+            <Button block onClick={() => chrome.tabs.create({ url: 'limits.html' })}>⏰ Manage Limits</Button>
+            <Button type="primary" block onClick={() => chrome.tabs.create({ url: 'history.html' })}>📊 View History</Button>
+          </Space.Compact>
+        </Space>
+      </Layout.Content>
+    </Layout>
   );
 }
 

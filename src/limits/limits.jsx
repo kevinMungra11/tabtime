@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import './limits.css';
+import 'antd/dist/reset.css';
+import { Layout, Typography, Input, InputNumber, Button, Card, List, Space, Tag, message } from 'antd';
 
 function Limits() {
   const [limits, setLimits] = useState({});
@@ -140,99 +142,87 @@ function Limits() {
   };
 
   return (
-    <div className="limits-container">
-      <header className="limits-header">
-        <h1>⏰ Time Limits</h1>
-        <p className="subtitle">Set daily time limits for websites</p>
-      </header>
+    <Layout style={{ minHeight: '100vh', background: '#f8f9fa' }}>
+      <Layout.Content style={{ maxWidth: 740, margin: '0 auto', padding: 16 }}>
+        <Card
+          style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: '#fff',
+            border: 'none',
+            marginBottom: 20,
+          }}
+          bodyStyle={{ padding: 24 }}
+        >
+          <Typography.Title level={2} style={{ color: '#fff', margin: 0 }}>⏰ Time Limits</Typography.Title>
+          <Typography.Text style={{ color: 'rgba(255,255,255,0.9)' }}>Set daily time limits for websites</Typography.Text>
+        </Card>
 
-      <main className="limits-main">
-        {/* Add New Limit Form */}
-        <div className="add-limit-card">
-          <h2>Add New Limit</h2>
-          
-          <div className="form-group">
-            <label>Website Domain</label>
-            <div className="input-with-suggestions">
-              <input
-                type="text"
-                placeholder="e.g., youtube.com"
-                value={newDomain}
-                onChange={handleDomainInputChange}
-                onKeyPress={(e) => e.key === 'Enter' && handleAddLimit()}
-                onFocus={() => setShowSuggestions(newDomain.length > 0)}
-                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-              />
-              {showSuggestions && filteredSuggestions.length > 0 && (
-                <div className="suggestions-dropdown">
-                  {filteredSuggestions.slice(0, 5).map((domain) => (
-                    <div
-                      key={domain}
-                      className="suggestion-item"
-                      onClick={() => selectDomain(domain)}
-                    >
-                      {domain}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label>Daily Limit (minutes)</label>
-            <input
-              type="number"
-              placeholder="e.g., 60"
-              value={newLimit}
-              onChange={(e) => setNewLimit(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleAddLimit()}
-              min="1"
-            />
-          </div>
-
-          <button className="btn btn-primary" onClick={handleAddLimit}>
-            Add Limit
-          </button>
-
-          {message && (
-            <div className="message">{message}</div>
-          )}
-        </div>
-
-        {/* Existing Limits */}
-        <div className="limits-list-section">
-          <h2>Active Limits</h2>
-          
-          {loading ? (
-            <div className="loading-state">Loading...</div>
-          ) : Object.keys(limits).length === 0 ? (
-            <div className="empty-state">
-              <p>No time limits set yet.</p>
-              <p className="hint">Add your first limit above to get started!</p>
-            </div>
-          ) : (
-            <div className="limits-list">
-              {Object.entries(limits).map(([domain, limitMinutes]) => (
-                <div key={domain} className="limit-item">
-                  <div className="limit-info">
-                    <span className="limit-domain">{domain}</span>
-                    <span className="limit-time">{formatTime(limitMinutes)} per day</span>
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <Card title="Add New Limit">
+            <Space direction="vertical" size={12} style={{ width: '100%' }}>
+              <div className="input-with-suggestions">
+                <Typography.Text>Website Domain</Typography.Text>
+                <Input
+                  placeholder="e.g., youtube.com"
+                  value={newDomain}
+                  onChange={handleDomainInputChange}
+                  onPressEnter={handleAddLimit}
+                  onFocus={() => setShowSuggestions(newDomain.length > 0)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                />
+                {showSuggestions && filteredSuggestions.length > 0 && (
+                  <div className="suggestions-dropdown">
+                    {filteredSuggestions.slice(0, 5).map((domain) => (
+                      <div
+                        key={domain}
+                        className="suggestion-item"
+                        onMouseDown={() => selectDomain(domain)}
+                      >
+                        {domain}
+                      </div>
+                    ))}
                   </div>
-                  <button 
-                    className="btn-delete"
-                    onClick={() => handleDeleteLimit(domain)}
-                    title="Remove limit"
+                )}
+              </div>
+
+              <div>
+                <Typography.Text>Daily Limit (minutes)</Typography.Text>
+                <InputNumber min={1} placeholder="e.g., 60" value={Number(newLimit) || undefined} onChange={(v) => setNewLimit(v)} style={{ width: '100%' }} />
+              </div>
+
+              <Button type="primary" onClick={handleAddLimit} block>Add Limit</Button>
+              {message && <Typography.Text>{message}</Typography.Text>}
+            </Space>
+          </Card>
+
+          <Card title="Active Limits">
+            {loading ? (
+              <Typography.Text type="secondary">Loading...</Typography.Text>
+            ) : Object.keys(limits).length === 0 ? (
+              <Space direction="vertical">
+                <Typography.Text>No time limits set yet.</Typography.Text>
+                <Typography.Text type="secondary">Add your first limit above to get started!</Typography.Text>
+              </Space>
+            ) : (
+              <List
+                itemLayout="horizontal"
+                dataSource={Object.entries(limits)}
+                renderItem={([domain, limitMinutes]) => (
+                  <List.Item
+                    actions={[<Button danger onClick={() => handleDeleteLimit(domain)} key="del">Remove</Button>]}
                   >
-                    🗑️
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </main>
-    </div>
+                    <List.Item.Meta
+                      title={<Typography.Text strong>{domain}</Typography.Text>}
+                      description={<Tag color="blue">{formatTime(limitMinutes)} per day</Tag>}
+                    />
+                  </List.Item>
+                )}
+              />
+            )}
+          </Card>
+        </Space>
+      </Layout.Content>
+    </Layout>
   );
 }
 

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import './history.css';
+import 'antd/dist/reset.css';
+import { Layout, Typography, Card, List, Tag, Space, Button } from 'antd';
 
 function History() {
   const [historyData, setHistoryData] = useState([]);
@@ -93,70 +95,78 @@ function History() {
   };
 
   return (
-    <div className="history-container">
-      <header className="history-header">
-        <h1>📊 7-Day History</h1>
-        <p className="subtitle">Your browsing activity over the past week</p>
-        
-        <button 
-          className="sync-button"
-          onClick={handleSyncHistory}
-          disabled={syncing}
+    <Layout style={{ minHeight: '100vh', background: '#f8f9fa' }}>
+      <Layout.Content style={{ maxWidth: 820, margin: '0 auto', padding: 16 }}>
+        <Card
+          style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: '#fff',
+            border: 'none',
+            marginBottom: 20,
+          }}
+          bodyStyle={{ padding: 24 }}
         >
-          {syncing ? '⏳ Syncing...' : '🔄 Import Browser History'}
-        </button>
-        
-        {syncMessage && (
-          <div className="sync-message">{syncMessage}</div>
-        )}
-      </header>
+          <Typography.Title level={2} style={{ color: '#fff', margin: 0 }}>
+            📊 7-Day History
+          </Typography.Title>
+          <Typography.Text style={{ color: 'rgba(255,255,255,0.9)' }}>
+            Your browsing activity over the past week
+          </Typography.Text>
+          <div style={{ marginTop: 12 }}>
+            <Space>
+              <Button type="default" onClick={handleSyncHistory} loading={syncing}>
+                🔄 Import Browser History
+              </Button>
+              {syncMessage && <Typography.Text style={{ color: '#fff' }}>{syncMessage}</Typography.Text>}
+            </Space>
+          </div>
+        </Card>
 
-      <main className="history-main">
         {loading ? (
-          <div className="loading-state">
-            <p>Loading history...</p>
-          </div>
+          <Card><Typography.Text type="secondary">Loading history...</Typography.Text></Card>
         ) : historyData.length === 0 ? (
-          <div className="empty-state">
-            <p>No history data yet. Start browsing to see your stats!</p>
-          </div>
+          <Card><Typography.Text type="secondary">No history data yet. Start browsing to see your stats!</Typography.Text></Card>
         ) : (
-          <div className="history-timeline">
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
             {historyData.map((day) => (
-              <div key={day.date} className="day-card">
-                <div className="day-header">
-                  <div className="day-info">
-                    <span className="day-badge">{getDayOfWeek(day.date)}</span>
-                    <h2 className="day-title">{formatDate(day.date)}</h2>
-                  </div>
-                  <div className="day-stats">
-                    <div className="stat">
-                      <span className="stat-value">{formatTime(day.totalTime)}</span>
-                      <span className="stat-label">Total</span>
-                    </div>
-                    <div className="stat">
-                      <span className="stat-value">{day.sitesCount}</span>
-                      <span className="stat-label">Sites</span>
-                    </div>
-                  </div>
+              <Card key={day.date}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Space size={12}>
+                    <Tag color="purple">{getDayOfWeek(day.date)}</Tag>
+                    <Typography.Title level={4} style={{ margin: 0 }}>{formatDate(day.date)}</Typography.Title>
+                  </Space>
+                  <Space>
+                    <Space direction="vertical" size={0} style={{ alignItems: 'flex-end' }}>
+                      <Typography.Text type="secondary">Total</Typography.Text>
+                      <Typography.Text strong>{formatTime(day.totalTime)}</Typography.Text>
+                    </Space>
+                    <Space direction="vertical" size={0} style={{ alignItems: 'flex-end' }}>
+                      <Typography.Text type="secondary">Sites</Typography.Text>
+                      <Typography.Text strong>{day.sitesCount}</Typography.Text>
+                    </Space>
+                  </Space>
                 </div>
-
                 {day.sites && day.sites.length > 0 && (
-                  <div className="sites-list">
-                    {day.sites.map((site, index) => (
-                      <div key={index} className="site-row">
-                        <span className="site-name">{site.domain}</span>
-                        <span className="site-time">{formatTime(site.time)}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <List
+                    style={{ marginTop: 12 }}
+                    itemLayout="horizontal"
+                    dataSource={day.sites}
+                    renderItem={(site) => (
+                      <List.Item>
+                        <List.Item.Meta
+                          title={<Typography.Text strong>{site.domain}</Typography.Text>}
+                          description={<Typography.Text type="secondary">{formatTime(site.time)}</Typography.Text>}
+                        />
+                      </List.Item>
+                    )}
+                  />
                 )}
-              </div>
+              </Card>
             ))}
-          </div>
+          </Space>
         )}
-      </main>
-    </div>
+      </Layout.Content>
+    </Layout>
   );
 }
 

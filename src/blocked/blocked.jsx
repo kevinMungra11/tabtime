@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import './blocked.css';
+import 'antd/dist/reset.css';
+import { Typography, Button, Card, Space } from 'antd';
 
 function Blocked() {
   const [domain, setDomain] = useState('');
@@ -60,26 +62,26 @@ function Blocked() {
 
   return (
     <div className="blocked-container">
-      <div className="blocked-content">
+      <Card className="blocked-content">
         <div className="icon">⏱️</div>
-        <h1>Time's Up!</h1>
-        <p className="subtitle">
+        <Typography.Title level={1} style={{ margin: 0 }}>Time's Up!</Typography.Title>
+        <Typography.Paragraph className="subtitle">
           You've reached your daily limit for <strong>{domain}</strong>
-        </p>
+        </Typography.Paragraph>
 
         {limit > 0 && (
           <div className="limit-info-box">
-            <p>Daily Limit: <strong>{limit} minutes</strong></p>
+            <Typography.Text>Daily Limit: <strong>{limit} minutes</strong></Typography.Text>
           </div>
         )}
 
         <div className="reset-timer">
-          <p className="reset-label">Access resumes in:</p>
-          <p className="reset-time">{timeUntilReset}</p>
+          <Typography.Text className="reset-label">Access resumes in:</Typography.Text>
+          <Typography.Title level={2} className="reset-time" style={{ margin: 0 }}>{timeUntilReset}</Typography.Title>
         </div>
 
         <div className="suggestions">
-          <h2>Take a break! 🌟</h2>
+          <Typography.Title level={3} style={{ textAlign: 'center' }}>Take a break! 🌟</Typography.Title>
           <ul>
             <li>Stretch and move around</li>
             <li>Grab a glass of water</li>
@@ -88,15 +90,11 @@ function Blocked() {
           </ul>
         </div>
 
-        <div className="actions">
-          <button className="btn btn-secondary" onClick={openHistoryPage}>
-            📊 View Your Stats
-          </button>
-          <button className="btn btn-primary" onClick={openLimitsPage}>
-            ⚙️ Manage Limits
-          </button>
-        </div>
-      </div>
+        <Space className="actions">
+          <Button onClick={openHistoryPage}>📊 View Your Stats</Button>
+          <Button type="primary" onClick={openLimitsPage}>⚙️ Manage Limits</Button>
+        </Space>
+      </Card>
     </div>
   );
 }
