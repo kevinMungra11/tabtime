@@ -3,7 +3,7 @@
   "name": "TabTime",
   "version": "1.0.0",
   "description": "Track your time spent on websites",
-  "permissions": ["tabs", "storage", "history", "notifications", "webNavigation"],
+  "permissions": ["tabs", "storage", "history", "notifications", "webNavigation", "idle"],
   "background": {
     "service_worker": "background.js"
   },

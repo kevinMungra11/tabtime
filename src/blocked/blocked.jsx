@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import './blocked.css';
 import 'antd/dist/reset.css';
-import { Typography, Button, Card, Space } from 'antd';
+import { Typography, Button, Card, Space, Alert } from 'antd';
+import { WarningOutlined, UnlockOutlined } from '@ant-design/icons';
 
 function Blocked() {
   const [domain, setDomain] = useState('');
@@ -60,6 +61,28 @@ function Blocked() {
     chrome.tabs.create({ url: 'history.html' });
   };
 
+  const handleEmergencyOverride = async () => {
+    if (!domain) return;
+    
+    try {
+      await chrome.runtime.sendMessage({
+        action: 'EMERGENCY_OVERRIDE',
+        domain: domain
+      });
+      
+      // Redirect to the domain
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0]) {
+          chrome.tabs.update(tabs[0].id, {
+            url: `https://${domain}`
+          });
+        }
+      });
+    } catch (error) {
+      console.error('Error enabling emergency override:', error);
+    }
+  };
+
   return (
     <div className="blocked-container">
       <Card className="blocked-content">
@@ -89,6 +112,19 @@ function Blocked() {
             <li>Check out your other priorities</li>
           </ul>
         </div>
+
+        <Alert
+          message="Need urgent access?"
+          description="Emergency override allows one-time access for today only. Use responsibly!"
+          type="warning"
+          icon={<WarningOutlined />}
+          style={{ marginBottom: 16 }}
+          action={
+            <Button size="small" danger icon={<UnlockOutlined />} onClick={handleEmergencyOverride}>
+              Override
+            </Button>
+          }
+        />
 
         <Space className="actions">
           <Button onClick={openHistoryPage}>📊 View Your Stats</Button>
