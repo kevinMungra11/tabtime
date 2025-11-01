@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import './popup.css';
+import 'antd/dist/reset.css';
+import { Layout, Card, Statistic, Typography, Progress, Button, Space, List, Tag, Switch, Divider } from 'antd';
+import { FieldTimeOutlined, BarChartOutlined, PauseCircleOutlined, PlayCircleOutlined, SafetyOutlined, IdcardOutlined } from '@ant-design/icons';
 
 function App() {
   const [currentDomain, setCurrentDomain] = useState('');
@@ -8,12 +11,74 @@ function App() {
   const [todayStats, setTodayStats] = useState({ totalTime: 0, sitesCount: 0, sites: {} });
   const [loading, setLoading] = useState(true);
   const [limits, setLimits] = useState({});
+  const [isPaused, setIsPaused] = useState(false);
+  const [isIdle, setIsIdle] = useState(false);
+  const [weekStats, setWeekStats] = useState({ weekTotal: 0, weekAvg: 0 });
 
   useEffect(() => {
     getCurrentTabDomain();
     getTodayStats();
     loadLimits();
+    loadPauseState();
+    loadWeekStats();
   }, []);
+
+  const loadPauseState = async () => {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'GET_PAUSE_STATE'
+      });
+      if (response) {
+        setIsPaused(response.isPaused || false);
+        setIsIdle(response.isIdle || false);
+      }
+    } catch (error) {
+      console.error('Error loading pause state:', error);
+    }
+  };
+
+  const loadWeekStats = async () => {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'GET_WEEK_STATS'
+      });
+      if (response) {
+        setWeekStats({
+          weekTotal: response.weekTotal || 0,
+          weekAvg: response.weekAvg || 0
+        });
+      }
+    } catch (error) {
+      console.error('Error loading week stats:', error);
+    }
+  };
+
+  const handleTogglePause = async () => {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'TOGGLE_PAUSE'
+      });
+      if (response) {
+        setIsPaused(response.isPaused);
+      }
+    } catch (error) {
+      console.error('Error toggling pause:', error);
+    }
+  };
+
+  const handleAddToWhitelist = async () => {
+    if (!currentDomain || currentDomain === 'Chrome Page' || currentDomain === 'Unknown' || currentDomain === 'Error') {
+      return;
+    }
+    try {
+      await chrome.runtime.sendMessage({
+        action: 'ADD_TO_WHITELIST',
+        domain: currentDomain
+      });
+    } catch (error) {
+      console.error('Error adding to whitelist:', error);
+    }
+  };
 
   const loadLimits = async () => {
     try {
@@ -36,6 +101,7 @@ function App() {
         getTimeForDomain(currentDomain);
       }
       getTodayStats();
+      loadPauseState();
     }, 1000);
     
     return () => clearInterval(interval);
@@ -158,103 +224,321 @@ function App() {
   const isNearLimit = limitSeconds && timeSpent >= limitSeconds * 0.8;
 
   return (
-    <div className="container">
-      <h1>TabTime</h1>
-      
-      <div className="today-stats">
-        <h2>Today's Activity</h2>
-        <div className="stats-grid">
-          <div className="stat-card">
-            <p className="stat-value">{formatTime(todayStats.totalTime)}</p>
-            <p className="stat-label">Total Time</p>
-          </div>
-          <div className="stat-card">
-            <p className="stat-value">{todayStats.sitesCount}</p>
-            <p className="stat-label">Sites Visited</p>
-          </div>
+    <Layout style={{ minWidth: 380, maxWidth: 420, background: '#f8f9fa' }}>
+      <Layout.Header style={{ 
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+        padding: '20px 24px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <Typography.Title level={3} style={{ color: '#fff', margin: 0, fontWeight: 700 }}>TabTime</Typography.Title>
+          <Space size={8}>
+            {isIdle && <Tag color="orange" style={{ border: 'none', margin: 0 }}>Idle</Tag>}
+            {isPaused && <Tag color="red" style={{ border: 'none', margin: 0 }}>Paused</Tag>}
+          </Space>
         </div>
-      </div>
-      
-      <div className="current-site">
-        <h2>Current Site</h2>
-        {loading ? (
-          <p className="loading">Loading...</p>
-        ) : (
-          <>
-            <div className="domain-display">
-              <p className="domain">{currentDomain}</p>
-            </div>
-            
-            {currentDomain !== 'Chrome Page' && currentDomain !== 'Unknown' && currentDomain !== 'Error' && (
-              <>
-                <div className="time-display">
-                  <p className="time-label">Time spent today</p>
-                  <p className="time-value">{formatTime(timeSpent)}</p>
-                  
-                  {limitSeconds && (
-                    <p className="limit-info">
-                      / {formatTime(limitSeconds)} limit
-                    </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography.Text style={{ color: 'rgba(255,255,255,0.95)', fontSize: 13 }}>Track. Limit. Improve.</Typography.Text>
+          <Switch
+            checked={!isPaused}
+            onChange={handleTogglePause}
+            checkedChildren={<PlayCircleOutlined />}
+            unCheckedChildren={<PauseCircleOutlined />}
+            style={{ background: isPaused ? '#ff4d4f' : '#52c41a' }}
+          />
+        </div>
+      </Layout.Header>
+
+      <Layout.Content style={{ padding: 20, maxHeight: 600, overflowY: 'auto' }}>
+        <Space direction="vertical" size={20} style={{ width: '100%' }}>
+          {/* Week Summary */}
+          <div>
+            <Typography.Text 
+              type="secondary" 
+              style={{ 
+                fontSize: 11, 
+                fontWeight: 600, 
+                textTransform: 'uppercase', 
+                letterSpacing: '0.5px',
+                display: 'block',
+                marginBottom: 12
+              }}
+            >
+              This Week Summary
+            </Typography.Text>
+            <Card 
+              style={{ 
+                borderRadius: 12,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                border: 'none'
+              }}
+              bodyStyle={{ padding: '20px' }}
+            >
+              <Space.Compact style={{ width: '100%', gap: 16 }}>
+                <div style={{ flex: 1, textAlign: 'center', paddingRight: 16, borderRight: '1px solid #f0f0f0' }}>
+                  <Statistic 
+                    title={<span style={{ fontSize: 11, color: '#8c8c8c' }}>Week Total</span>} 
+                    value={formatTime(weekStats.weekTotal)} 
+                    prefix={<FieldTimeOutlined style={{ color: '#667eea', fontSize: 16 }} />}
+                    valueStyle={{ fontSize: 18, fontWeight: 700, color: '#262626' }}
+                  />
+                </div>
+                <div style={{ flex: 1, textAlign: 'center' }}>
+                  <Statistic 
+                    title={<span style={{ fontSize: 11, color: '#8c8c8c' }}>Daily Avg</span>} 
+                    value={formatTime(weekStats.weekAvg)} 
+                    prefix={<BarChartOutlined style={{ color: '#764ba2', fontSize: 16 }} />}
+                    valueStyle={{ fontSize: 18, fontWeight: 700, color: '#262626' }}
+                  />
+                </div>
+              </Space.Compact>
+            </Card>
+          </div>
+
+          {/* Today's Activity */}
+          <div>
+            <Typography.Text 
+              type="secondary" 
+              style={{ 
+                fontSize: 11, 
+                fontWeight: 600, 
+                textTransform: 'uppercase', 
+                letterSpacing: '0.5px',
+                display: 'block',
+                marginBottom: 12
+              }}
+            >
+              Today's Activity
+            </Typography.Text>
+            <Space.Compact style={{ width: '100%', gap: 12 }}>
+              <Card 
+                style={{ 
+                  flex: 1, 
+                  borderRadius: 12,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #f5f7ff 0%, #fff 100%)'
+                }}
+                bodyStyle={{ padding: '18px' }}
+              >
+                <Statistic 
+                  title={<span style={{ fontSize: 11, color: '#8c8c8c' }}>Total Time</span>} 
+                  value={formatTime(todayStats.totalTime)} 
+                  prefix={<FieldTimeOutlined style={{ color: '#667eea' }} />}
+                  valueStyle={{ fontSize: 20, fontWeight: 700 }}
+                />
+              </Card>
+              <Card 
+                style={{ 
+                  flex: 1, 
+                  borderRadius: 12,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #faf5ff 0%, #fff 100%)'
+                }}
+                bodyStyle={{ padding: '18px' }}
+              >
+                <Statistic 
+                  title={<span style={{ fontSize: 11, color: '#8c8c8c' }}>Sites Visited</span>} 
+                  value={todayStats.sitesCount} 
+                  prefix={<BarChartOutlined style={{ color: '#764ba2' }} />}
+                  valueStyle={{ fontSize: 20, fontWeight: 700 }}
+                />
+              </Card>
+            </Space.Compact>
+          </div>
+
+          {/* Current Site */}
+          <div>
+            <Typography.Text 
+              type="secondary" 
+              style={{ 
+                fontSize: 11, 
+                fontWeight: 600, 
+                textTransform: 'uppercase', 
+                letterSpacing: '0.5px',
+                display: 'block',
+                marginBottom: 12
+              }}
+            >
+              Current Site
+            </Typography.Text>
+            <Card
+              style={{ 
+                borderRadius: 12,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                border: 'none'
+              }}
+              bodyStyle={{ padding: '20px' }}
+            >
+              {loading ? (
+                <Typography.Text type="secondary" style={{ fontSize: 14 }}>Loading...</Typography.Text>
+              ) : (
+                <Space direction="vertical" style={{ width: '100%' }} size={16}>
+                  <div>
+                    <Typography.Title 
+                      level={5} 
+                      style={{ 
+                        margin: 0, 
+                        marginBottom: 16,
+                        fontSize: 16,
+                        fontWeight: 600,
+                        color: '#262626',
+                        wordBreak: 'break-word'
+                      }}
+                    >
+                      {currentDomain}
+                    </Typography.Title>
+                  </div>
+                  {currentDomain !== 'Chrome Page' && currentDomain !== 'Unknown' && currentDomain !== 'Error' && (
+                    <>
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <Typography.Text type="secondary" style={{ fontSize: 12 }}>Time spent today</Typography.Text>
+                          <Button 
+                            size="small" 
+                            icon={<SafetyOutlined />} 
+                            onClick={handleAddToWhitelist}
+                            style={{ fontSize: 11, height: 24, padding: '0 8px' }}
+                          >
+                            Whitelist
+                          </Button>
+                        </div>
+                        <div style={{ marginBottom: 12 }}>
+                          <Typography.Text style={{ fontSize: 24, fontWeight: 700, color: '#262626' }}>
+                            {formatTime(timeSpent)}
+                          </Typography.Text>
+                          {limitSeconds && (
+                            <Typography.Text type="secondary" style={{ fontSize: 14, marginLeft: 8 }}>
+                              / {formatTime(limitSeconds)} limit
+                            </Typography.Text>
+                          )}
+                        </div>
+                        {limitSeconds && (
+                          <Progress 
+                            percent={Math.min(Math.round(limitProgress), 100)} 
+                            status={isOverLimit ? 'exception' : isNearLimit ? 'active' : 'normal'} 
+                            showInfo={false}
+                            strokeWidth={8}
+                            style={{ marginBottom: 12 }}
+                          />
+                        )}
+                        <Space size={8}>
+                          {isOverLimit && <Tag color="error" style={{ margin: 0 }}>Time limit exceeded</Tag>}
+                          {isNearLimit && !isOverLimit && <Tag color="warning" style={{ margin: 0 }}>Approaching limit</Tag>}
+                        </Space>
+                      </div>
+                    </>
                   )}
-                </div>
-                
-                {limitSeconds && (
-                  <div className="progress-container">
-                    <div 
-                      className={`progress-bar ${isOverLimit ? 'over-limit' : isNearLimit ? 'near-limit' : ''}`}
-                      style={{ width: `${Math.min(limitProgress, 100)}%` }}
-                    />
-                  </div>
-                )}
-                
-                {isOverLimit && (
-                  <div className="limit-warning over">
-                    ⚠️ Time limit exceeded!
-                  </div>
-                )}
-                {isNearLimit && !isOverLimit && (
-                  <div className="limit-warning near">
-                    ⏰ Approaching time limit
-                  </div>
-                )}
-              </>
-            )}
-          </>
-        )}
-      </div>
-
-      {topSites.length > 0 && (
-        <div className="top-sites">
-          <h2>Top Sites Today</h2>
-          <div className="sites-list">
-            {topSites.map((site, index) => (
-              <div key={site.domain} className="site-item">
-                <div className="site-rank">{index + 1}</div>
-                <div className="site-info">
-                  <p className="site-domain">{site.domain}</p>
-                  <p className="site-time">{formatTime(site.time)}</p>
-                </div>
-              </div>
-            ))}
+                </Space>
+              )}
+            </Card>
           </div>
-        </div>
-      )}
 
-      <div className="actions">
-        <button 
-          className="btn btn-secondary"
-          onClick={() => chrome.tabs.create({ url: 'limits.html' })}
-        >
-          ⏰ Manage Limits
-        </button>
-        <button 
-          className="btn btn-primary"
-          onClick={() => chrome.tabs.create({ url: 'history.html' })}
-        >
-          📊 View History
-        </button>
-      </div>
-    </div>
+          {/* Top Sites */}
+          {topSites.length > 0 && (
+            <div>
+              <Typography.Text 
+                type="secondary" 
+                style={{ 
+                  fontSize: 11, 
+                  fontWeight: 600, 
+                  textTransform: 'uppercase', 
+                  letterSpacing: '0.5px',
+                  display: 'block',
+                  marginBottom: 12
+                }}
+              >
+                Top Sites Today
+              </Typography.Text>
+              <Card 
+                style={{ 
+                  borderRadius: 12,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                  border: 'none'
+                }}
+                bodyStyle={{ padding: 0 }}
+              >
+                <List
+                  itemLayout="horizontal"
+                  dataSource={topSites}
+                  renderItem={(site, index) => (
+                    <List.Item 
+                      style={{ 
+                        padding: '14px 20px',
+                        borderBottom: index < topSites.length - 1 ? '1px solid #f0f0f0' : 'none'
+                      }}
+                    >
+                      <List.Item.Meta
+                        avatar={
+                          <div style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#fff',
+                            fontWeight: 700,
+                            fontSize: 13
+                          }}>
+                            {index + 1}
+                          </div>
+                        }
+                        title={
+                          <Typography.Text strong style={{ fontSize: 14, color: '#262626' }} ellipsis>
+                            {site.domain}
+                          </Typography.Text>
+                        }
+                        description={
+                          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                            {formatTime(site.time)}
+                          </Typography.Text>
+                        }
+                      />
+                    </List.Item>
+                  )}
+                />
+              </Card>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div style={{ paddingTop: 8 }}>
+            <Space.Compact style={{ width: '100%', gap: 12 }}>
+              <Button 
+                block 
+                onClick={() => chrome.tabs.create({ url: 'limits.html' })}
+                style={{ 
+                  height: 40,
+                  borderRadius: 10,
+                  fontWeight: 600,
+                  fontSize: 13
+                }}
+              >
+                ⏰ Limits
+              </Button>
+              <Button 
+                type="primary" 
+                block 
+                onClick={() => chrome.tabs.create({ url: 'history.html' })}
+                style={{ 
+                  height: 40,
+                  borderRadius: 10,
+                  fontWeight: 600,
+                  fontSize: 13,
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none'
+                }}
+              >
+                📊 History
+              </Button>
+            </Space.Compact>
+          </div>
+        </Space>
+      </Layout.Content>
+    </Layout>
   );
 }
 

@@ -6,6 +6,10 @@ let startTime = null;
 let sessionData = {}; // Store time data organized by date
 let timeLimits = {}; // Store time limits for domains (in minutes)
 let notificationState = {}; // Track which notifications have been shown today
+let isPaused = false; // Pause/resume tracking state
+let isIdle = false; // Idle detection state
+let whitelist = []; // Websites to never track
+let emergencyOverrides = {}; // Emergency override state by domain (resets daily)
 
 // Helper to get today's date key (YYYY-MM-DD)
 function getTodayKey() {
@@ -37,7 +41,7 @@ chrome.runtime.onStartup.addListener(async () => {
 // Load data from chrome.storage
 async function loadDataFromStorage() {
   try {
-    const result = await chrome.storage.local.get(['sessionData', 'timeLimits', 'notificationState']);
+    const result = await chrome.storage.local.get(['sessionData', 'timeLimits', 'notificationState', 'isPaused', 'whitelist', 'emergencyOverrides']);
     if (result.sessionData) {
       sessionData = result.sessionData;
       console.log('Loaded data from storage:', sessionData);
@@ -56,6 +60,22 @@ async function loadDataFromStorage() {
     } else {
       notificationState = { date: getTodayKey() };
     }
+    if (result.isPaused !== undefined) {
+      isPaused = result.isPaused;
+    }
+    if (result.whitelist) {
+      whitelist = result.whitelist;
+    }
+    if (result.emergencyOverrides) {
+      emergencyOverrides = result.emergencyOverrides;
+      // Clean up old overrides (not from today)
+      const today = getTodayKey();
+      if (emergencyOverrides.date !== today) {
+        emergencyOverrides = { date: today };
+      }
+    } else {
+      emergencyOverrides = { date: getTodayKey() };
+    }
   } catch (error) {
     console.error('Error loading data:', error);
   }
@@ -64,7 +84,7 @@ async function loadDataFromStorage() {
 // Save data to chrome.storage
 async function saveDataToStorage() {
   try {
-    await chrome.storage.local.set({ sessionData, timeLimits, notificationState });
+    await chrome.storage.local.set({ sessionData, timeLimits, notificationState, isPaused, whitelist, emergencyOverrides });
     console.log('Saved data to storage');
   } catch (error) {
     console.error('Error saving data:', error);
@@ -99,8 +119,13 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   const domain = extractDomain(details.url);
   if (!domain || !timeLimits[domain]) return; // No limit set
   
-  // Check if limit is exceeded
+  // Check emergency override
   const today = getTodayKey();
+  if (emergencyOverrides.date === today && emergencyOverrides[domain]) {
+    return; // Emergency override active
+  }
+  
+  // Check if limit is exceeded
   const timeSpent = (sessionData[today] && sessionData[today][domain]) || 0;
   const limitSeconds = timeLimits[domain] * 60;
   
@@ -185,6 +210,11 @@ async function checkTimeLimits(domain, totalTimeSeconds) {
 
 // Periodic save every 30 seconds (backup)
 setInterval(async () => {
+  // Don't save if paused, idle, or whitelisted
+  if (isPaused || isIdle || !currentDomain || !startTime || isWhitelisted(currentDomain)) {
+    return;
+  }
+  
   if (currentDomain && startTime) {
     const now = Date.now();
     const timeSpent = Math.floor((now - startTime) / 1000);
@@ -224,9 +254,19 @@ async function handleTabChange(tab) {
   // Save time for previous tab
   await saveCurrentSession();
   
-  // Start tracking new tab
+  // Start tracking new tab (only if not paused and not idle and not whitelisted)
+  const domain = extractDomain(tab.url);
+  
+  if (isPaused || isIdle || isWhitelisted(domain)) {
+    currentTab = tab;
+    currentDomain = domain;
+    startTime = null; // Don't track
+    console.log('Tracking paused/whitelisted for:', domain);
+    return;
+  }
+  
   currentTab = tab;
-  currentDomain = extractDomain(tab.url);
+  currentDomain = domain;
   startTime = Date.now();
   
   console.log('Now tracking:', currentDomain);
@@ -281,6 +321,27 @@ function extractDomain(url) {
     return null;
   }
 }
+
+// Check if domain is whitelisted
+function isWhitelisted(domain) {
+  return domain && whitelist.includes(domain);
+}
+
+// Idle detection - pause tracking when user is idle for 5+ minutes
+chrome.idle.onStateChanged.addListener(async (newState) => {
+  if (newState === 'idle' && !isIdle) {
+    isIdle = true;
+    console.log('User is idle, pausing tracking');
+    await saveCurrentSession(); // Save before pausing
+  } else if (newState !== 'idle' && isIdle) {
+    isIdle = false;
+    console.log('User is active again, resuming tracking');
+    // Resume tracking current tab
+    if (!isPaused) {
+      startTracking();
+    }
+  }
+});
 
 // Sync browsing history
 async function syncBrowsingHistory(days = 7) {
@@ -402,7 +463,7 @@ async function syncBrowsingHistory(days = 7) {
 }
 
 // Handle messages from popup
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   if (request.action === 'GET_TIME') {
     const domain = request.domain;
     const today = getTodayKey();
@@ -488,9 +549,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   
   if (request.action === 'SYNC_HISTORY') {
     const days = request.days || 7;
-    syncBrowsingHistory(days).then(result => {
-      sendResponse(result);
-    });
+    const result = await syncBrowsingHistory(days);
+    sendResponse(result);
     return true; // Keep channel open for async response
   }
   
@@ -501,15 +561,94 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'SET_LIMIT') {
     const { domain, limitMinutes } = request;
     timeLimits[domain] = limitMinutes;
-    saveDataToStorage();
+    await saveDataToStorage();
     sendResponse({ success: true });
+    return true;
   }
   
   if (request.action === 'DELETE_LIMIT') {
     const { domain } = request;
     delete timeLimits[domain];
-    saveDataToStorage();
+    await saveDataToStorage();
     sendResponse({ success: true });
+    return true;
+  }
+  
+  if (request.action === 'TOGGLE_PAUSE') {
+    isPaused = !isPaused;
+    if (isPaused) {
+      await saveCurrentSession(); // Save before pausing
+      startTime = null;
+    } else {
+      await startTracking(); // Resume tracking
+    }
+    await saveDataToStorage();
+    sendResponse({ isPaused });
+    return true;
+  }
+  
+  if (request.action === 'GET_PAUSE_STATE') {
+    sendResponse({ isPaused, isIdle });
+  }
+  
+  if (request.action === 'GET_WHITELIST') {
+    sendResponse({ whitelist });
+  }
+  
+  if (request.action === 'ADD_TO_WHITELIST') {
+    const { domain } = request;
+    if (domain && !whitelist.includes(domain)) {
+      whitelist.push(domain);
+      await saveDataToStorage();
+      // If currently tracking this domain, stop tracking
+      if (currentDomain === domain) {
+        await saveCurrentSession();
+        startTime = null;
+      }
+    }
+    sendResponse({ success: true, whitelist });
+    return true;
+  }
+  
+  if (request.action === 'REMOVE_FROM_WHITELIST') {
+    const { domain } = request;
+    whitelist = whitelist.filter(d => d !== domain);
+    await saveDataToStorage();
+    sendResponse({ success: true, whitelist });
+    return true;
+  }
+  
+  if (request.action === 'EMERGENCY_OVERRIDE') {
+    const { domain } = request;
+    const today = getTodayKey();
+    if (emergencyOverrides.date !== today) {
+      emergencyOverrides = { date: today };
+    }
+    emergencyOverrides[domain] = true;
+    await saveDataToStorage();
+    sendResponse({ success: true });
+    return true;
+  }
+  
+  if (request.action === 'GET_WEEK_STATS') {
+    const weekData = [];
+    const today = new Date();
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateKey = date.toISOString().split('T')[0];
+      const dayData = sessionData[dateKey] || {};
+      let totalTime = 0;
+      for (const domain in dayData) {
+        totalTime += dayData[domain];
+      }
+      weekData.push({ date: dateKey, totalTime });
+    }
+    
+    const weekTotal = weekData.reduce((sum, day) => sum + day.totalTime, 0);
+    const weekAvg = Math.floor(weekTotal / 7);
+    
+    sendResponse({ weekData, weekTotal, weekAvg });
   }
   
   return true; // Keep message channel open
